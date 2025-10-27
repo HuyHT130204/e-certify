@@ -10,10 +10,9 @@ use solana_program::{
     program::invoke_signed,
     sysvar::Sysvar,
     declare_id,
-    program_pack::Pack,
+    instruction::{AccountMeta, Instruction},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
-use spl_token::state::Account as TokenAccount;
 
 // Program ID - will be set during deployment
 declare_id!("ECertifyProgram11111111111111111111111111111");
@@ -63,7 +62,7 @@ pub struct CreateMerkleTreeData {
     pub tree_name: String,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct IssueCredentialData {
     pub student_wallet: Pubkey,
     pub credential_name: String,
@@ -263,7 +262,7 @@ fn process_create_merkle_tree(
 
 // Issue credential via CPI with zero-copy optimizations
 fn process_issue_credential_via_cpi(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
@@ -272,13 +271,13 @@ fn process_issue_credential_via_cpi(
     let issuer_pda = next_account_info(account_info_iter)?;
     let merkle_tree_account = next_account_info(account_info_iter)?;
     let leaf_owner = next_account_info(account_info_iter)?;
-    let leaf_delegate = next_account_info(account_info_iter)?;
+    let _leaf_delegate = next_account_info(account_info_iter)?;
     let merkle_tree = next_account_info(account_info_iter)?;
-    let tree_delegate = next_account_info(account_info_iter)?;
+    let _tree_delegate = next_account_info(account_info_iter)?;
     let payer = next_account_info(account_info_iter)?;
     let tree_authority = next_account_info(account_info_iter)?;
-    let log_wrapper = next_account_info(account_info_iter)?;
-    let compression_program = next_account_info(account_info_iter)?;
+    let _log_wrapper = next_account_info(account_info_iter)?;
+    let _compression_program = next_account_info(account_info_iter)?;
     let bubblegum_program = next_account_info(account_info_iter)?;
     let system_program = next_account_info(account_info_iter)?;
 
@@ -301,19 +300,15 @@ fn process_issue_credential_via_cpi(
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // Create Bubblegum mint instruction
-    let mint_ix = create_bubblegum_mint_instruction(
+    // For MVP, we'll create a simplified mint instruction
+    // In production, this would use the actual Metaplex Bubblegum program
+    let mint_ix = create_simplified_mint_instruction(
         bubblegum_program.key,
         leaf_owner.key,
-        leaf_delegate.key,
         merkle_tree.key,
-        tree_delegate.key,
         tree_authority.key,
         payer.key,
-        log_wrapper.key,
-        compression_program.key,
-        system_program.key,
-        data,
+        data.clone(),
     )?;
 
     // Execute the CPI
@@ -321,13 +316,9 @@ fn process_issue_credential_via_cpi(
         &mint_ix,
         &[
             leaf_owner.clone(),
-            leaf_delegate.clone(),
             merkle_tree.clone(),
-            tree_delegate.clone(),
-            payer.clone(),
             tree_authority.clone(),
-            log_wrapper.clone(),
-            compression_program.clone(),
+            payer.clone(),
             bubblegum_program.clone(),
             system_program.clone(),
         ],
@@ -343,40 +334,32 @@ fn process_issue_credential_via_cpi(
     Ok(())
 }
 
-// Helper function to create Bubblegum mint instruction
-fn create_bubblegum_mint_instruction(
+// Simplified mint instruction for MVP
+fn create_simplified_mint_instruction(
     bubblegum_program: &Pubkey,
     leaf_owner: &Pubkey,
-    leaf_delegate: &Pubkey,
     merkle_tree: &Pubkey,
-    tree_delegate: &Pubkey,
     tree_authority: &Pubkey,
     payer: &Pubkey,
-    log_wrapper: &Pubkey,
-    compression_program: &Pubkey,
-    system_program: &Pubkey,
     data: IssueCredentialData,
-) -> Result<solana_program::instruction::Instruction, ProgramError> {
-    // This is a simplified version - in production you'd use the actual Bubblegum program
-    // For now, we'll create a basic instruction structure
+) -> Result<Instruction, ProgramError> {
+    // For MVP, we'll create a simple instruction that logs the credential data
+    // In production, this would be a proper Bubblegum mint instruction
     let mut instruction_data = Vec::new();
     instruction_data.push(0); // Mint discriminator
     instruction_data.extend_from_slice(&data.student_wallet.to_bytes());
     instruction_data.extend_from_slice(&data.credential_name.as_bytes());
     instruction_data.extend_from_slice(&data.metadata_uri.as_bytes());
 
-    Ok(solana_program::instruction::Instruction {
+    Ok(Instruction {
         program_id: *bubblegum_program,
         accounts: vec![
-            solana_program::instruction::AccountMeta::new_readonly(*leaf_owner, false),
-            solana_program::instruction::AccountMeta::new_readonly(*leaf_delegate, false),
-            solana_program::instruction::AccountMeta::new_readonly(*merkle_tree, false),
-            solana_program::instruction::AccountMeta::new_readonly(*tree_delegate, false),
-            solana_program::instruction::AccountMeta::new(*payer, true),
-            solana_program::instruction::AccountMeta::new_readonly(*tree_authority, true),
-            solana_program::instruction::AccountMeta::new_readonly(*log_wrapper, false),
-            solana_program::instruction::AccountMeta::new_readonly(*compression_program, false),
-            solana_program::instruction::AccountMeta::new_readonly(*system_program, false),
+            AccountMeta::new_readonly(*leaf_owner, false),
+            AccountMeta::new_readonly(*merkle_tree, false),
+            AccountMeta::new_readonly(*tree_authority, true),
+            AccountMeta::new(*payer, true),
+            AccountMeta::new_readonly(*bubblegum_program, false),
+            AccountMeta::new_readonly(solana_program::system_program::ID, false),
         ],
         data: instruction_data,
     })

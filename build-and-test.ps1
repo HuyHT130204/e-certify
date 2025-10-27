@@ -50,3 +50,5 @@ Write-Host "To deploy the program:" -ForegroundColor Cyan
 Write-Host "1. solana program deploy program/target/deploy/e_certify.so" -ForegroundColor White
 Write-Host "2. Update PROGRAM_ID in frontend/utils/ecertify.ts" -ForegroundColor White
 
+
+

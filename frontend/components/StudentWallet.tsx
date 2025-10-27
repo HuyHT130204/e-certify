@@ -10,6 +10,7 @@ import {
   HeliusAsset,
   CredentialMetadata
 } from '../utils/helius'
+import { ClientOnly } from './ClientOnly'
 
 interface Credential {
   id: string
@@ -20,9 +21,9 @@ interface Credential {
   issuer_name: string
   issued_date: string
   uri: string
-  image?: string
-  student_name?: string
-  student_id?: string
+  image: string
+  student_name: string
+  student_id: string
 }
 
 const StudentWallet: React.FC = () => {
@@ -54,7 +55,7 @@ const StudentWallet: React.FC = () => {
       const apecCredentials = filterAssetsByIssuer(response.items, APEC_ISSUER_ADDRESS)
 
       // Parse credential metadata
-      const credentialList: Credential[] = apecCredentials
+      const credentialList = apecCredentials
         .map(asset => {
           const metadata = parseCredentialMetadata(asset)
           if (!metadata) return null
@@ -73,7 +74,7 @@ const StudentWallet: React.FC = () => {
             student_id: metadata.student_id,
           }
         })
-        .filter((cred): cred is Credential => cred !== null) as Credential[]
+        .filter((cred): cred is Credential => cred !== null)
 
       // If no real credentials found, show mock data for demo
       if (credentialList.length === 0) {
@@ -168,7 +169,9 @@ const StudentWallet: React.FC = () => {
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
         <h2 className="text-2xl font-bold mb-4">Student Wallet</h2>
         <p className="text-gray-600 mb-6">Connect your wallet to view your credentials</p>
-        <WalletMultiButton />
+        <ClientOnly>
+          <WalletMultiButton />
+        </ClientOnly>
       </div>
     )
   }
@@ -178,7 +181,9 @@ const StudentWallet: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg p-8">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900">My Credentials</h2>
-          <WalletMultiButton />
+          <ClientOnly>
+            <WalletMultiButton />
+          </ClientOnly>
         </div>
 
         {loading ? (

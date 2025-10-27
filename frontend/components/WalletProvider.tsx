@@ -1,4 +1,4 @@
-import React, { FC, ReactNode, useMemo } from 'react'
+import React, { FC, ReactNode, useMemo, useState, useEffect } from 'react'
 import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets'
@@ -13,6 +13,8 @@ interface WalletContextProviderProps {
 }
 
 export const WalletProvider: FC<WalletContextProviderProps> = ({ children }) => {
+  const [mounted, setMounted] = useState(false)
+  
   // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'
   const network = WalletAdapterNetwork.Devnet
 
@@ -26,6 +28,15 @@ export const WalletProvider: FC<WalletContextProviderProps> = ({ children }) => 
     ],
     [network]
   )
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Prevent hydration mismatch by not rendering wallet components on server
+  if (!mounted) {
+    return <div>{children}</div>
+  }
 
   return (
     <ConnectionProvider endpoint={endpoint}>

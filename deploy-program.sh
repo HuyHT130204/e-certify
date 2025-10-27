@@ -1,61 +1,124 @@
 #!/bin/bash
 
 # E-Certify Program Deployment Script
-echo "🚀 Deploying E-Certify Program to Solana Devnet..."
+# This script builds and deploys the E-Certify program to Solana Devnet
 
-# Set Solana network to devnet
-solana config set --url devnet
+set -e
+
+echo "🚀 Starting E-Certify Program Deployment..."
 
 # Check if Solana CLI is installed
 if ! command -v solana &> /dev/null; then
-    echo "❌ Solana CLI not found. Please install Solana CLI first."
+    echo "❌ Solana CLI is not installed. Please install it first."
+    echo "   Visit: https://docs.solana.com/cli/install-solana-cli-tools"
     exit 1
 fi
 
-# Check if Rust is installed
-if ! command -v cargo &> /dev/null; then
-    echo "❌ Rust/Cargo not found. Please install Rust first."
-    exit 1
+# Check if we're on the right network
+echo "📡 Checking Solana network..."
+CURRENT_NETWORK=$(solana config get | grep "RPC URL" | awk '{print $3}')
+echo "Current network: $CURRENT_NETWORK"
+
+if [[ "$CURRENT_NETWORK" != *"devnet"* ]]; then
+    echo "⚠️  Not on devnet. Switching to devnet..."
+    solana config set --url devnet
 fi
 
-# Navigate to program directory
-cd program
+# Check wallet
+echo "💰 Checking wallet..."
+WALLET_ADDRESS=$(solana address)
+if [ -z "$WALLET_ADDRESS" ]; then
+    echo "❌ No wallet configured. Please run: solana-keygen new"
+    exit 1
+fi
+echo "Wallet address: $WALLET_ADDRESS"
+
+# Check SOL balance
+BALANCE=$(solana balance)
+echo "SOL balance: $BALANCE"
+
+if [ "$BALANCE" = "0 SOL" ]; then
+    echo "⚠️  No SOL balance. Requesting airdrop..."
+    solana airdrop 2
+    echo "✅ Airdrop completed"
+fi
 
 # Build the program
-echo "📦 Building program..."
-cargo build-bpf
+echo "🔨 Building E-Certify program..."
+cd program
 
-if [ $? -ne 0 ]; then
-    echo "❌ Build failed. Please check the code."
-    exit 1
+# Try to build with cargo build-bpf first
+if command -v cargo build-bpf &> /dev/null; then
+    echo "Using cargo build-bpf..."
+    cargo build-bpf
+else
+    echo "Using cargo build-sbf..."
+    cargo build-sbf
 fi
 
 # Deploy the program
 echo "🚀 Deploying program to Devnet..."
-PROGRAM_ID=$(solana program deploy target/deploy/e_certify.so --program-id ECertifyProgram111111111111111111111111111111111)
+PROGRAM_ID=$(solana program deploy target/deploy/e_certify.so --program-id target/deploy/e_certify-keypair.json)
 
 if [ $? -eq 0 ]; then
     echo "✅ Program deployed successfully!"
-    echo "📋 Program ID: $PROGRAM_ID"
+    echo "Program ID: $PROGRAM_ID"
     
-    # Update program ID in frontend
+    # Update the program ID in the frontend
+    echo "📝 Updating program ID in frontend..."
     cd ../frontend
-    echo "NEXT_PUBLIC_PROGRAM_ID=$PROGRAM_ID" > .env.local
-    echo "NEXT_PUBLIC_SOLANA_NETWORK=devnet" >> .env.local
-    echo "✅ Frontend environment updated"
     
-    # Go back to root
-    cd ..
+    # Update the program ID in ecertify.ts
+    sed -i "s/ECertifyProgram11111111111111111111111111111/$PROGRAM_ID/g" utils/ecertify.ts
     
+    # Update the program ID in bubblegum.ts
+    sed -i "s/ECertifyProgram11111111111111111111111111111/$PROGRAM_ID/g" utils/bubblegum.ts
+    
+    # Update the program ID in helius.ts
+    sed -i "s/ECertifyProgram11111111111111111111111111111/$PROGRAM_ID/g" utils/helius.ts
+    
+    echo "✅ Program ID updated in frontend files"
+    
+    # Create a deployment summary
+    echo "📋 Creating deployment summary..."
+    cat > ../DEPLOYMENT_SUMMARY.md << EOF
+# E-Certify Program Deployment Summary
+
+## Deployment Details
+- **Network**: Solana Devnet
+- **Program ID**: $PROGRAM_ID
+- **Wallet**: $WALLET_ADDRESS
+- **Deployment Time**: $(date)
+- **Build Status**: ✅ Success
+
+## Updated Files
+- \`frontend/utils/ecertify.ts\`
+- \`frontend/utils/bubblegum.ts\`
+- \`frontend/utils/helius.ts\`
+
+## Next Steps
+1. Start the frontend: \`cd frontend && npm run dev\`
+2. Test the application at: http://localhost:3000
+3. Connect wallet and test all three flows:
+   - Admin Dashboard (Issuer Registration)
+   - Student Wallet (Credential Viewing)
+   - Verifier Portal (Credential Verification)
+
+## Program Instructions
+- \`initialize_issuer\`: Register university as credential issuer
+- \`create_merkle_tree\`: Create Merkle tree for credential batch
+- \`issue_credential_via_cpi\`: Mint cNFT credential
+- \`verify_zk_proof\`: Verify Zero-Knowledge proofs (placeholder)
+
+EOF
+    
+    echo "✅ Deployment summary created: DEPLOYMENT_SUMMARY.md"
     echo ""
-    echo "🎉 Deployment complete!"
-    echo "📝 Next steps:"
-    echo "   1. Run 'cd frontend && npm run dev' to start the frontend"
-    echo "   2. Connect your wallet to Devnet"
-    echo "   3. Test the issuer registration"
+    echo "🎉 Deployment completed successfully!"
+    echo "📖 Check DEPLOYMENT_SUMMARY.md for details"
+    echo "🚀 Start the frontend with: cd frontend && npm run dev"
+    
 else
-    echo "❌ Deployment failed. Please check the logs."
+    echo "❌ Program deployment failed!"
     exit 1
 fi
-
-

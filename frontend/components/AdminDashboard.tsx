@@ -15,6 +15,8 @@ import {
   CreateMerkleTreeData,
   IssueCredentialData
 } from '../utils/ecertify'
+import { batchMintCredentials } from '../utils/bubblegum'
+import { ClientOnly } from './ClientOnly'
 
 interface IssuerData {
   authority: string
@@ -165,9 +167,74 @@ const AdminDashboard: React.FC = () => {
   }
 
   const issueCredentials = async (csvFile: File) => {
-    // This would process CSV and mint cNFTs via Bubblegum
-    console.log('Processing CSV file:', csvFile.name)
-    // Implementation would go here
+    if (!publicKey || !signTransaction) return
+
+    setLoading(true)
+    try {
+      // Parse CSV file
+      const csvText = await csvFile.text()
+      const lines = csvText.split('\n').filter(line => line.trim())
+      const headers = lines[0].split(',').map(h => h.trim())
+      
+      // Find required columns
+      const walletIndex = headers.findIndex(h => h.toLowerCase().includes('wallet'))
+      const nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'))
+      const idIndex = headers.findIndex(h => h.toLowerCase().includes('id'))
+      
+      if (walletIndex === -1 || nameIndex === -1 || idIndex === -1) {
+        throw new Error('CSV must contain columns: wallet_address, student_name, student_internal_id')
+      }
+      
+      // Parse student data
+      const students = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim())
+        return {
+          wallet: new PublicKey(values[walletIndex]),
+          name: values[nameIndex],
+          internalId: values[idIndex]
+        }
+      }).filter(student => student.wallet && student.name && student.internalId)
+      
+      if (students.length === 0) {
+        throw new Error('No valid student data found in CSV')
+      }
+      
+      // Get form values
+      const credentialName = (document.getElementById('credential-name') as HTMLInputElement)?.value || 'Default Credential'
+      const credentialType = (document.getElementById('credential-type') as HTMLSelectElement)?.value || 'Dual_Degree_Module'
+      const selectedBatchId = (document.getElementById('batch-select') as HTMLSelectElement)?.value
+      
+      if (!selectedBatchId) {
+        throw new Error('Please select a credential batch')
+      }
+      
+      // Get merkle tree for the selected batch
+      const merkleTree = new PublicKey('11111111111111111111111111111111') // Mock for MVP
+      
+      // Batch mint credentials
+      const signatures = await batchMintCredentials(
+        connection,
+        { publicKey, signTransaction },
+        students,
+        credentialName,
+        credentialType,
+        'Startup Finance', // Default business skill
+        'Python', // Default tech skill
+        merkleTree,
+        (completed, total) => {
+          console.log(`Minted ${completed}/${total} credentials`)
+        }
+      )
+      
+      alert(`Successfully minted ${signatures.length} credentials!`)
+      console.log('Minting signatures:', signatures)
+      
+    } catch (error) {
+      console.error('Error processing CSV:', error)
+      alert(`Error processing CSV: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!publicKey) {
@@ -175,7 +242,9 @@ const AdminDashboard: React.FC = () => {
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
         <h2 className="text-2xl font-bold mb-4">Admin Dashboard</h2>
         <p className="text-gray-600 mb-6">Connect your wallet to access admin features</p>
-        <WalletMultiButton />
+        <ClientOnly>
+          <WalletMultiButton />
+        </ClientOnly>
       </div>
     )
   }
@@ -185,7 +254,9 @@ const AdminDashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg p-8">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
-          <WalletMultiButton />
+          <ClientOnly>
+            <WalletMultiButton />
+          </ClientOnly>
         </div>
 
         {/* Tab Navigation */}
@@ -298,7 +369,7 @@ const AdminDashboard: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Credential Batch
                 </label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <select id="batch-select" className="w-full border border-gray-300 rounded-lg px-3 py-2">
                   <option>Select a batch...</option>
                   {credentialBatches.map((batch) => (
                     <option key={batch.id} value={batch.id}>
@@ -314,15 +385,15 @@ const AdminDashboard: React.FC = () => {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <input
+                    id="credential-name"
                     type="text"
                     placeholder="Credential Name"
                     className="border border-gray-300 rounded-lg px-3 py-2"
                   />
-                  <select className="border border-gray-300 rounded-lg px-3 py-2">
-                    <option>Credential Type</option>
-                    <option>Dual Degree Module</option>
-                    <option>Business Skill</option>
-                    <option>Technical Skill</option>
+                  <select id="credential-type" className="border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="Dual_Degree_Module">Dual Degree Module</option>
+                    <option value="Business_Skill">Business Skill</option>
+                    <option value="Technical_Skill">Technical Skill</option>
                   </select>
                 </div>
               </div>

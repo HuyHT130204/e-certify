@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { getAsset, getAssetProof, parseCredentialMetadata, CredentialMetadata } from '../utils/helius'
 import { useConnection } from '@solana/wallet-adapter-react'
+import { verifyCredentialOnChain } from '../utils/verification'
 
 interface VerificationResult {
   isValid: boolean
@@ -44,39 +45,18 @@ const VerifierPortal: React.FC = () => {
     setVerificationResult(null)
 
     try {
-      // Fetch asset data from Helius DAS API
-      const [asset, proof] = await Promise.all([
-        getAsset(id),
-        getAssetProof(id)
-      ])
-
-      // Parse credential metadata
-      const metadata = parseCredentialMetadata(asset)
-      if (!metadata) {
-        throw new Error('Invalid credential metadata')
-      }
-
-      // Verify Merkle proof (simplified for MVP)
-      const isValidProof = await verifyMerkleProof(asset, proof)
+      // Use the new verification utility
+      const result = await verifyCredentialOnChain(id, connection)
       
-      if (isValidProof) {
+      if (result.isValid && result.credential) {
         setVerificationResult({
           isValid: true,
-          credential: {
-            id: id,
-            name: metadata.name,
-            student_name: 'Student Name', // Would come from metadata
-            issuer_name: metadata.issuer_name,
-            issued_date: metadata.issued_at.split('T')[0],
-            type: metadata.credential_type,
-            skill_business: metadata.skill_business,
-            skill_tech: metadata.skill_tech,
-          }
+          credential: result.credential
         })
       } else {
         setVerificationResult({
           isValid: false,
-          error: 'Invalid credential proof'
+          error: result.error || 'Invalid credential'
         })
       }
     } catch (error) {
@@ -105,17 +85,6 @@ const VerifierPortal: React.FC = () => {
     }
   }
 
-  // Simplified Merkle proof verification (for MVP)
-  const verifyMerkleProof = async (asset: any, proof: any): Promise<boolean> => {
-    try {
-      // In production, this would verify the proof against the on-chain Merkle tree
-      // For MVP, we'll return true if the asset exists and has valid metadata
-      return asset && asset.id && proof && proof.root
-    } catch (error) {
-      console.error('Merkle proof verification error:', error)
-      return false
-    }
-  }
 
   const handleManualVerification = () => {
     if (assetId.trim()) {
