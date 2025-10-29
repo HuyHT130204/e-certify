@@ -74,13 +74,13 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
     <div className={`fixed top-4 right-4 z-50 max-w-sm w-full bg-white rounded-lg shadow-lg border ${getTypeStyles()} transform transition-all duration-300 ease-in-out`}>
       <div className="p-4">
         <div className="flex items-start">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             {getIcon()}
           </div>
           <div className="ml-3 w-0 flex-1">
             <p className="text-sm font-medium">{message}</p>
           </div>
-          <div className="ml-4 flex-shrink-0 flex">
+          <div className="ml-4 shrink-0 flex">
             <button
               className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition ease-in-out duration-150"
               onClick={onClose}

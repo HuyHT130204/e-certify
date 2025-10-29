@@ -1,116 +1,61 @@
-# E-Certify: Blockchain Credential Platform
+# APEC-Credify
 
-A decentralized credential verification platform built on Solana, designed for APEC University's dual-degree program.
+A Solana Colosseum Hackathon MVP to create an on-chain credentialing system for APEC University using compressed NFTs (cNFTs).
 
-## Features
+## Product Overview
+- B2B admin issues credentials in batch to students
+- Students view a mobile-first Skills Passport (your existing frontend)
+- Verifiers confirm authenticity via a public verification page (provided by your frontend)
 
-- **On-chain Credentials**: Issue credentials as compressed NFTs (cNFTs) on Solana
-- **Batch Minting**: Upload CSV files to mint credentials for multiple students
-- **Student Wallet**: Mobile-first interface for students to view and share credentials
-- **Verification Portal**: Public verification system for employers and institutions
-- **Arweave Storage**: Permanent metadata storage on Arweave network
+## Critical SDKs and Versions
+- @solana/web3.js: ^2.0.0 (v2 API)
+- @coral-xyz/anchor: ^0.32.1 (TS client)
+- Anchor Rust crate: 0.32.1
+- Anchor CLI: 0.32.0 (via avm)
+- @metaplex-foundation/mpl-bubblegum: ^5.0.2 (cNFTs)
+- @solana-program/token: ^0.6.0
+- @solana/rpc-transport-http: ^2.0.0
+- Rust edition: 2021 (use stable 1.90.0+ as available)
 
-## Tech Stack
+## Project Structure
+- programs/credify_program: Anchor on-chain program (tree authority, governance scaffolding)
+- ts/adminMint.ts: Admin backend script to batch mint credentials using Bubblegum
+- frontend/: Your existing frontend application (use this for UI)
 
-- **Frontend**: Next.js, React, TypeScript, TailwindCSS
-- **Blockchain**: Solana (Devnet)
-- **Storage**: Arweave via Irys
-- **APIs**: Helius DAS API for cNFT data
-- **Wallet**: Solana Wallet Adapter
+## Prerequisites
+- Node.js 18+
+- pnpm/npm/yarn
+- Rust + Solana + Anchor CLI
+  - avm install 0.32.0 && avm use 0.32.0
+  - anchor --version
 
-## Quick Start
-
-### 1. Install Dependencies
-
+## Install Dependencies (root: on-chain + admin script)
 ```bash
-cd frontend
 npm install
 ```
 
-### 2. Configure Environment
-
-Create `frontend/.env.local`:
-
-```env
-NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_HELIUS_API_KEY=your_helius_api_key
-NEXT_PUBLIC_HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=your_key
-NEXT_PUBLIC_PROGRAM_ID=A9wy4icR7uQnffj16zLDonoaSt4dhwaMudLo34nfccej
+## Build On-chain Program
+```bash
+npm run anchor:build
 ```
 
-### 3. Start Development Server
+## Run Admin Script
+Edit `ts/adminMint.ts` and fill in your payer secret key, collection mint, and RPC.
+```bash
+npx ts-node ts/adminMint.ts
+```
 
+## Frontend
+Use your existing app under `frontend/`. Install and run it with your current workflow, e.g.:
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+## Environment
+- DAS RPC (Helius) for asset queries:
+  - `https://mainnet.helius-rpc.com/?api-key=3ad52cea-a8c4-41e2-8b01-22230620e995`
 
-## Usage
-
-### Admin Dashboard
-
-1. Connect your Solana wallet (Phantom recommended)
-2. Register as an issuer (APEC University)
-3. Create credential batches
-4. Upload CSV file with student data to mint credentials
-
-### Student Wallet
-
-1. Connect your wallet
-2. View your issued credentials
-3. Generate QR codes for sharing
-4. Share verification links
-
-### Verification Portal
-
-1. Enter asset ID or scan QR code
-2. Verify credential authenticity
-3. View credential details
-
-## CSV Format
-
-For batch credential minting, use this CSV format:
-
-```csv
-wallet_address,student_name,student_internal_id
-9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM,John Doe,12345
-5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1,Jane Smith,12346
-```
-
-## Architecture
-
-### On-chain Data Flow
-
-1. **Credential Creation**: Admin uploads CSV → Metadata uploaded to Arweave → cNFT minted on Solana
-2. **Student Access**: Student connects wallet → DAS API fetches credentials → Display in wallet
-3. **Verification**: Verifier enters asset ID → DAS API fetches asset + proof → Merkle verification
-
-### Key Components
-
-- `frontend/utils/helius-mint.ts` - Batch minting with Arweave upload
-- `frontend/utils/helius.ts` - DAS API integration
-- `frontend/utils/verification.ts` - Merkle proof verification
-- `frontend/components/AdminDashboard.tsx` - Admin interface
-- `frontend/components/StudentWallet.tsx` - Student interface
-- `frontend/components/VerifierPortal.tsx` - Verification interface
-
-## Development Notes
-
-- Currently uses mock data for cNFT minting (Bubblegum integration pending)
-- Arweave uploads use Irys network
-- All mock data has been removed from components
-- Real on-chain data flow implemented
-
-## Next Steps
-
-1. Integrate actual Bubblegum SDK for cNFT minting
-2. Deploy Rust program to Devnet
-3. Implement ZK-proof verification (stretch goal)
-4. Add QR code scanning functionality
-5. Production Arweave funding setup
-
-## License
-
-MIT
+## Notes
+- On-chain CPI details for creating trees and proof math verification are left as placeholders for the MVP. Replace with full implementations as you iterate.

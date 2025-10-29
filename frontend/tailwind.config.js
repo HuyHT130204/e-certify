@@ -10,6 +10,44 @@ module.exports = {
         '16/9': '16 / 9',
       },
       colors: {
+        // Design system solid colors (no gradients)
+        brand: {
+          DEFAULT: '#6366F1',
+          dark: '#4F46E5',
+          light: '#818CF8',
+        },
+        success: {
+          DEFAULT: '#10B981',
+          dark: '#059669',
+          light: '#34D399',
+        },
+        warning: {
+          DEFAULT: '#F59E0B',
+          dark: '#D97706',
+          light: '#FBBF24',
+        },
+        danger: {
+          DEFAULT: '#EF4444',
+          dark: '#DC2626',
+          light: '#F87171',
+        },
+        info: {
+          DEFAULT: '#0EA5E9',
+          dark: '#0284C7',
+          light: '#38BDF8',
+        },
+        neutral: {
+          50: '#F8FAFC',
+          100: '#F1F5F9',
+          200: '#E2E8F0',
+          300: '#CBD5E1',
+          400: '#94A3B8',
+          500: '#64748B',
+          600: '#475569',
+          700: '#334155',
+          800: '#1F2937',
+          900: '#0F172A',
+        },
         'learn': {
           'purple': {
             50: '#faf5ff',

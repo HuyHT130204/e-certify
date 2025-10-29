@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import QRCode from 'react-qr-code'
-import { 
-  getAssetsByOwner, 
-  filterAssetsByIssuer, 
-  parseCredentialMetadata,
-  generateQRCodeData,
-  HeliusAsset,
-  CredentialMetadata
-} from '../utils/helius'
-import { ClientOnly } from './ClientOnly'
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
+import { useWallet, useConnection } from "@solana/wallet-adapter-react"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
+import QRCode from "react-qr-code"
+import { getAssetsByOwner, filterAssetsByIssuer, parseCredentialMetadata } from "../utils/helius"
+import { ClientOnly } from "./ClientOnly"
+import Modal from "./Modal"
+import { Share2, QrCode, Award, Calendar, Building2, Code2, Briefcase } from "lucide-react"
 
 interface Credential {
   id: string
@@ -26,6 +24,8 @@ interface Credential {
   student_id: string
 }
 
+const DEMO_OWNER = "DEMO_OWNER_PUBLIC_KEY"
+
 const StudentWallet: React.FC = () => {
   const { publicKey } = useWallet()
   const { connection } = useConnection()
@@ -34,39 +34,27 @@ const StudentWallet: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [showQR, setShowQR] = useState(false)
 
-  // APEC University issuer address (would be the actual deployed program address)
-  const APEC_ISSUER_ADDRESS = 'ECertifyProgram111111111111111111111111111111111'
+  const APEC_ISSUER_ADDRESS = "ECertifyProgram111111111111111111111111111111111"
 
   useEffect(() => {
     if (publicKey) {
-      fetchCredentials()
+      fetchCredentials(publicKey.toString())
     }
   }, [publicKey])
 
-  const fetchCredentials = async () => {
-    if (!publicKey) return
-
+  const fetchCredentials = async (owner: string) => {
     setLoading(true)
     try {
-      // Fetch assets from Helius DAS API
-      const response = await getAssetsByOwner(publicKey.toString())
-      
-      // Check if response has items
+      const response = await getAssetsByOwner(owner)
       if (!response || !response.items) {
-        console.log('No assets found for wallet:', publicKey.toString())
         setCredentials([])
         return
       }
-      
-      // Filter for APEC University credentials
       const apecCredentials = filterAssetsByIssuer(response.items, APEC_ISSUER_ADDRESS)
-
-      // Parse credential metadata - ONLY REAL DATA
       const credentialList = apecCredentials
-        .map(asset => {
+        .map((asset) => {
           const metadata = parseCredentialMetadata(asset)
           if (!metadata) return null
-
           return {
             id: asset.id,
             name: metadata.name,
@@ -74,214 +62,306 @@ const StudentWallet: React.FC = () => {
             skill_business: metadata.skill_business,
             skill_tech: metadata.skill_tech,
             issuer_name: metadata.issuer_name,
-            issued_date: metadata.issued_at.split('T')[0],
-            uri: asset.content?.json_uri || '',
-            image: asset.content?.files?.[0]?.uri || asset.content?.metadata?.image || '/api/placeholder/300/200',
-            student_name: 'Student Name', // Will be fetched from metadata
+            issued_date: metadata.issued_at.split("T")[0],
+            uri: asset.content?.json_uri || "",
+            image:
+              (asset.content as any)?.files?.[0]?.uri ||
+              (asset.content as any)?.metadata?.image ||
+              "/api/placeholder/300/200",
+            student_name: "Student Name",
             student_id: metadata.student_id,
           }
         })
-        .filter((cred): cred is Credential => cred !== null)
-
+        .filter((c): c is Credential => c !== null)
       setCredentials(credentialList)
-    } catch (error) {
-      console.error('Error fetching credentials:', error)
-      // NO MOCK DATA - show empty state
+    } catch (e) {
+      console.error(e)
       setCredentials([])
     } finally {
       setLoading(false)
     }
   }
 
-  const generateShareLink = (credential: Credential) => {
-    return `https://verify.ecertify.app?asset_id=${credential.id}`
-  }
+  const generateShareLink = (credential: Credential) => `https://verify.ecertify.app?asset_id=${credential.id}`
 
   const getCredentialTypeColor = (type: string) => {
     switch (type) {
-      case 'Technical Skill':
-        return 'bg-blue-100 text-blue-800'
-      case 'Business Skill':
-        return 'bg-green-100 text-green-800'
-      case 'Dual Degree Module':
-        return 'bg-purple-100 text-purple-800'
+      case "Technical Skill":
+        return "bg-primary/10 text-primary border-primary/30"
+      case "Business Skill":
+        return "bg-success/10 text-success border-success/30"
+      case "Dual Degree Module":
+        return "bg-accent/10 text-accent border-accent/30"
       default:
-        return 'bg-gray-100 text-gray-800'
+        return "bg-surface-light text-text-secondary border-border/50"
     }
   }
 
+  const getCredentialIcon = (type: string) => {
+    switch (type) {
+      case "Technical Skill":
+        return Code2
+      case "Business Skill":
+        return Briefcase
+      case "Dual Degree Module":
+        return Award
+      default:
+        return Award
+    }
+  }
+
+  const LoadButton = (
+    <button onClick={() => fetchCredentials(DEMO_OWNER)} className="btn-secondary text-sm">
+      Load Demo
+    </button>
+  )
+
   if (!publicKey) {
     return (
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">Student Wallet</h2>
-        <p className="text-gray-600 mb-6">Connect your wallet to view your credentials</p>
-        <ClientOnly>
-          <WalletMultiButton />
-        </ClientOnly>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="max-w-md w-full bg-surface border border-border/50 rounded-xl shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Award className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-text mb-2">Student Wallet</h2>
+          <p className="text-text-secondary mb-6">Connect your wallet to view and manage your credentials</p>
+          <ClientOnly>
+            <div className="flex flex-col gap-3">
+              <WalletMultiButton />
+              {LoadButton}
+            </div>
+          </ClientOnly>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">My Credentials</h2>
-          <ClientOnly>
-            <WalletMultiButton />
-          </ClientOnly>
+      {/* Header */}
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-text mb-2">My Credentials</h2>
+          <p className="text-text-secondary">View and share your verified blockchain credentials</p>
         </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your credentials...</p>
+        <ClientOnly>
+          <div className="flex items-center gap-3">
+            <WalletMultiButton />
+            {LoadButton}
           </div>
-        ) : (
-          <>
-            {/* Credentials Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {credentials.map((credential) => (
-                <div
+        </ClientOnly>
+      </div>
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="card text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-text-secondary">Loading your credentials...</p>
+        </div>
+      ) : credentials.length === 0 ? (
+        <div className="card text-center py-16">
+          <div className="w-20 h-20 bg-surface-light rounded-full flex items-center justify-center mx-auto mb-4">
+            <Award className="w-10 h-10 text-text-tertiary" />
+          </div>
+          <h3 className="text-xl font-bold text-text mb-2">No Credentials Yet</h3>
+          <p className="text-text-secondary mb-6">
+            Your verified credentials will appear here once you complete courses and earn achievements
+          </p>
+          <button onClick={() => fetchCredentials(DEMO_OWNER)} className="btn-primary">
+            Load Demo Credentials
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Credentials Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {credentials.map((credential) => {
+              const TypeIcon = getCredentialIcon(credential.type)
+              return (
+                <button
                   key={credential.id}
                   onClick={() => setSelectedCredential(credential)}
-                  className="border border-gray-200 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                  className="card-interactive group text-left overflow-hidden"
                 >
-                  <div className="aspect-w-16 aspect-h-9 mb-4">
+                  {/* Image */}
+                  <div className="mb-4 rounded-lg overflow-hidden aspect-video bg-surface-light relative">
                     <img
-                      src={credential.image}
+                      src={credential.image || "/placeholder.svg"}
                       alt={credential.name}
-                      className="w-full h-32 object-cover rounded-lg"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-lg">{credential.name}</h3>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getCredentialTypeColor(credential.type)}`}>
-                      {credential.type}
-                    </span>
-                    <p className="text-sm text-gray-600">
-                      Issued by {credential.issuer_name}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(credential.issued_date).toLocaleDateString()}
-                    </p>
+
+                  {/* Content */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg line-clamp-2 text-text mb-2">{credential.name}</h3>
+                      <div
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${getCredentialTypeColor(credential.type)}`}
+                      >
+                        <TypeIcon className="w-3 h-3" />
+                        {credential.type}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Footer */}
+                  <div className="pt-3 border-t border-border/50 flex items-center justify-between text-sm">
+                    <span className="text-text-tertiary">{new Date(credential.issued_date).toLocaleDateString()}</span>
+                    <span className="text-text-secondary font-medium">{credential.issuer_name}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Award className="w-6 h-6 text-primary" />
                 </div>
-              ))}
+                <div>
+                  <p className="text-text-tertiary text-sm">Total Credentials</p>
+                  <p className="text-2xl font-bold text-text">{credentials.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-text-tertiary text-sm">Issuers</p>
+                  <p className="text-2xl font-bold text-text">{new Set(credentials.map((c) => c.issuer_name)).size}</p>
+                </div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-accent" />
+                </div>
+                <div>
+                  <p className="text-text-tertiary text-sm">Latest</p>
+                  <p className="text-2xl font-bold text-text">
+                    {credentials.length > 0
+                      ? new Date(credentials[0].issued_date).toLocaleDateString("en-US", {
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Credential Detail Modal */}
+      {selectedCredential && (
+        <Modal
+          isOpen={!!selectedCredential}
+          title={selectedCredential.name}
+          onClose={() => {
+            setSelectedCredential(null)
+            setShowQR(false)
+          }}
+          footer={
+            <div className="flex flex-col md:flex-row gap-3 justify-end">
+              <button
+                onClick={() => setShowQR(!showQR)}
+                className="btn-secondary flex items-center gap-2 justify-center"
+              >
+                <QrCode className="w-4 h-4" />
+                {showQR ? "Hide QR" : "Show QR"}
+              </button>
+              <button
+                onClick={() => {
+                  const link = generateShareLink(selectedCredential)
+                  navigator.clipboard.writeText(link)
+                  alert("Link copied to clipboard!")
+                }}
+                className="btn-primary flex items-center gap-2 justify-center"
+              >
+                <Share2 className="w-4 h-4" />
+                Copy Link
+              </button>
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column - Image and QR */}
+            <div>
+              <div className="rounded-lg overflow-hidden bg-surface-light aspect-video mb-4">
+                <img
+                  src={selectedCredential.image || "/placeholder.svg"}
+                  alt={selectedCredential.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {showQR && (
+                <div className="p-4 border border-border/50 rounded-lg flex items-center justify-center bg-surface-light">
+                  <QRCode
+                    value={generateShareLink(selectedCredential)}
+                    size={200}
+                    style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Credential Detail Modal */}
-            {selectedCredential && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-6">
-                      <h3 className="text-2xl font-bold">{selectedCredential.name}</h3>
-                      <button
-                        onClick={() => setSelectedCredential(null)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <div className="space-y-6">
-                      {/* Credential Image */}
-                      <div className="aspect-w-16 aspect-h-9">
-                        <img
-                          src={selectedCredential.image}
-                          alt={selectedCredential.name}
-                          className="w-full h-48 object-cover rounded-lg"
-                        />
-                      </div>
-
-                      {/* Credential Details */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Type</label>
-                          <p className="mt-1">{selectedCredential.type}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Issued Date</label>
-                          <p className="mt-1">{new Date(selectedCredential.issued_date).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Business Skill</label>
-                          <p className="mt-1">{selectedCredential.skill_business}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Technical Skill</label>
-                          <p className="mt-1">{selectedCredential.skill_tech}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Student Name</label>
-                          <p className="mt-1">{selectedCredential.student_name || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Student ID</label>
-                          <p className="mt-1">{selectedCredential.student_id || 'N/A'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Issuer</label>
-                          <p className="mt-1">{selectedCredential.issuer_name}</p>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex space-x-4 pt-6 border-t">
-                        <button
-                          onClick={() => setShowQR(true)}
-                          className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700"
-                        >
-                          Generate QR Code
-                        </button>
-                        <button
-                          onClick={() => {
-                            const link = generateShareLink(selectedCredential)
-                            navigator.clipboard.writeText(link)
-                            alert('Share link copied to clipboard!')
-                          }}
-                          className="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700"
-                        >
-                          Copy Share Link
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+            {/* Right Column - Details */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-text-tertiary text-sm font-medium mb-1">Credential Type</p>
+                <div
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border ${getCredentialTypeColor(selectedCredential.type)}`}
+                >
+                  {getCredentialIcon(selectedCredential.type) &&
+                    (() => {
+                      const Icon = getCredentialIcon(selectedCredential.type)
+                      return <Icon className="w-4 h-4" />
+                    })()}
+                  {selectedCredential.type}
                 </div>
               </div>
-            )}
 
-            {/* QR Code Modal */}
-            {showQR && selectedCredential && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-lg p-8 text-center">
-                  <h3 className="text-xl font-bold mb-4">Share Credential</h3>
-                  <div className="mb-4">
-                    <QRCode
-                      value={generateShareLink(selectedCredential)}
-                      size={200}
-                      style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Scan this QR code to verify the credential
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-surface border border-border/50 rounded-lg p-3">
+                  <p className="text-text-tertiary text-xs font-medium mb-1">Issued Date</p>
+                  <p className="font-semibold text-text">
+                    {new Date(selectedCredential.issued_date).toLocaleDateString()}
                   </p>
-                  <button
-                    onClick={() => setShowQR(false)}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700"
-                  >
-                    Close
-                  </button>
+                </div>
+                <div className="bg-surface border border-border/50 rounded-lg p-3">
+                  <p className="text-text-tertiary text-xs font-medium mb-1">Student ID</p>
+                  <p className="font-semibold text-text">{selectedCredential.student_id || "N/A"}</p>
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              <div className="bg-surface border border-border/50 rounded-lg p-3">
+                <p className="text-text-tertiary text-xs font-medium mb-1">Business Skill</p>
+                <p className="font-semibold text-text">{selectedCredential.skill_business}</p>
+              </div>
+
+              <div className="bg-surface border border-border/50 rounded-lg p-3">
+                <p className="text-text-tertiary text-xs font-medium mb-1">Technical Skill</p>
+                <p className="font-semibold text-text">{selectedCredential.skill_tech}</p>
+              </div>
+
+              <div className="bg-surface border border-border/50 rounded-lg p-3">
+                <p className="text-text-tertiary text-xs font-medium mb-1">Issuer</p>
+                <p className="font-semibold text-text">{selectedCredential.issuer_name}</p>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

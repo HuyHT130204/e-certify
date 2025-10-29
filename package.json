@@ -1,0 +1,30 @@
+{
+  "name": "apec-credify",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "admin:mint": "ts-node ts/adminMint.ts",
+    "anchor:build": "anchor build",
+    "anchor:deploy": "anchor deploy",
+    "anchor:test": "anchor test",
+    "mock:server": "tsx ts/mockServer.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@metaplex-foundation/mpl-bubblegum": "^5.0.2",
+    "@solana-program/token": "^0.6.0",
+    "@solana/rpc-transport-http": "^2.0.0",
+    "@solana/web3.js": "^2.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.30",
+    "@types/cors": "^2.8.17",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.5"
+  }
+}

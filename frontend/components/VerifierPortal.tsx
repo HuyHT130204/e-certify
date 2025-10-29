@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
-import { getAsset, getAssetProof, parseCredentialMetadata, CredentialMetadata } from '../utils/helius'
-import { useConnection } from '@solana/wallet-adapter-react'
-import { verifyCredentialOnChain } from '../utils/verification'
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/router"
+import { getAsset, getAssetProof } from "../utils/helius"
+import { useConnection } from "@solana/wallet-adapter-react"
+import { verifyCredentialOnChain } from "../utils/verification"
+import dynamic from "next/dynamic"
+import { QrCode, FileText, Zap, CheckCircle, AlertCircle, ArrowRight } from "lucide-react"
+
+const QRScanner = dynamic(() => import("./QRScanner"), { ssr: false })
 
 interface VerificationResult {
   isValid: boolean
@@ -19,19 +26,17 @@ interface VerificationResult {
   error?: string
 }
 
+const DEMO_ASSET_ID = "asset-demo-1"
+
 const VerifierPortal: React.FC = () => {
   const router = useRouter()
   const { connection } = useConnection()
-  const [assetId, setAssetId] = useState<string>('')
+  const [assetId, setAssetId] = useState<string>("")
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
   const [loading, setLoading] = useState(false)
-  const [scannedQR, setScannedQR] = useState(false)
-
-  // APEC University issuer address
-  const APEC_ISSUER_ADDRESS = 'ECertifyProgram111111111111111111111111111111111'
+  const [showScanner, setShowScanner] = useState(false)
 
   useEffect(() => {
-    // Check if asset_id is in URL parameters (from QR code scan)
     if (router.query.asset_id) {
       setAssetId(router.query.asset_id as string)
       verifyCredential(router.query.asset_id as string)
@@ -40,222 +45,187 @@ const VerifierPortal: React.FC = () => {
 
   const verifyCredential = async (id: string) => {
     if (!id) return
-
     setLoading(true)
     setVerificationResult(null)
-
     try {
-      // Get asset from Helius DAS API
-      const asset = await getAsset(id)
-      
-      // Get proof for verification
-      const proof = await getAssetProof(id)
-      
-      // Verify credential on-chain
+      await getAsset(id)
+      await getAssetProof(id)
       const result = await verifyCredentialOnChain(id, connection)
-      
       if (result.isValid && result.credential) {
-        setVerificationResult({
-          isValid: true,
-          credential: result.credential
-        })
+        setVerificationResult({ isValid: true, credential: result.credential })
       } else {
-        setVerificationResult({
-          isValid: false,
-          error: result.error || 'Invalid credential'
-        })
+        setVerificationResult({ isValid: false, error: result.error || "Invalid credential" })
       }
     } catch (error) {
-      console.error('Verification error:', error)
-      
-      // NO MOCK DATA - show error
-      setVerificationResult({
-        isValid: false,
-        error: 'Failed to verify credential. Please try again.'
-      })
+      console.error("Verification error:", error)
+      setVerificationResult({ isValid: false, error: "Failed to verify credential. Please try again." })
     } finally {
       setLoading(false)
     }
   }
 
-
   const handleManualVerification = () => {
-    if (assetId.trim()) {
-      verifyCredential(assetId.trim())
-    }
+    if (assetId.trim()) verifyCredential(assetId.trim())
   }
-
-  const handleQRScan = () => {
-    // Real QR scanning would require a camera library like 'react-qr-scanner'
-    // For now, prompt user to paste the asset ID from QR code
-    const scannedId = prompt('Please paste the asset ID from the QR code:')
-    if (scannedId) {
-      setAssetId(scannedId)
-      verifyCredential(scannedId)
-    }
+  const handleQuickVerify = () => {
+    setAssetId(DEMO_ASSET_ID)
+    verifyCredential(DEMO_ASSET_ID)
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Credential Verification</h2>
-          <p className="text-gray-600">
-            Verify the authenticity of blockchain credentials issued by APEC University
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 text-balance">Verify Blockchain Credentials</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Authenticate and validate credentials issued by APEC University
           </p>
         </div>
 
-        {/* Verification Methods */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* QR Code Scan */}
-          <div className="border border-gray-200 rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-              </svg>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          {/* QR Code Scanner Card */}
+          <div
+            className="relative bg-white rounded-2xl p-6 border border-gray-200 hover:shadow transition-all duration-300 cursor-pointer"
+            onClick={() => setShowScanner(true)}
+          >
+            <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
+              <QrCode className="w-7 h-7 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Scan QR Code</h3>
-            <p className="text-gray-600 mb-4">Scan the QR code provided by the student</p>
-            <button
-              onClick={handleQRScan}
-              disabled={scannedQR}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {scannedQR ? 'Scanning...' : 'Scan QR Code'}
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Scan QR Code</h3>
+            <p className="text-gray-600 text-sm mb-4">Use your camera to scan credential QR codes</p>
+            <button className="inline-flex items-center gap-2 text-blue-600 text-sm font-medium">
+              <span>Open Scanner</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Manual Entry */}
-          <div className="border border-gray-200 rounded-lg p-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
+          {/* Manual Entry Card */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow transition-all duration-300">
+            <div className="w-14 h-14 bg-pink-50 rounded-xl flex items-center justify-center mb-4">
+              <FileText className="w-7 h-7 text-pink-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-center">Manual Entry</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Asset ID
-                </label>
-                <input
-                  type="text"
-                  value={assetId}
-                  onChange={(e) => setAssetId(e.target.value)}
-                  placeholder="Enter credential asset ID"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Manual Entry</h3>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={assetId}
+                onChange={(e) => setAssetId(e.target.value)}
+                placeholder="Enter asset ID"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500/30 transition-all"
+              />
               <button
                 onClick={handleManualVerification}
                 disabled={!assetId.trim() || loading}
-                className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
+                className="w-full px-4 py-3 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Verify Credential
+                Verify
               </button>
             </div>
           </div>
+
+          {/* Quick Verify Card */}
+          <div
+            className="relative bg-white rounded-2xl p-6 border border-gray-200 hover:shadow transition-all duration-300 cursor-pointer"
+            onClick={handleQuickVerify}
+          >
+            <div className="w-14 h-14 bg-emerald-50 rounded-xl flex items-center justify-center mb-4">
+              <Zap className="w-7 h-7 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Quick Verify</h3>
+            <p className="text-gray-600 text-sm mb-4">Verify a sample credential instantly</p>
+            <button className="inline-flex items-center gap-2 text-emerald-600 text-sm font-medium">
+              <span>Verify Now</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Verifying credential...</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="relative w-16 h-16 mb-4">
+              <div className="absolute inset-0 rounded-full border-2 border-gray-300"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-600 border-r-blue-600 animate-spin"></div>
+            </div>
+            <p className="text-gray-600 text-lg">Verifying credential...</p>
           </div>
         )}
 
-        {/* Verification Result */}
         {verificationResult && !loading && (
           <div className="mt-8">
             {verificationResult.isValid ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-8">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+              <div className="bg-white rounded-2xl p-8 border border-emerald-200">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-8 h-8 text-emerald-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-green-800 mb-2">VERIFIED</h3>
-                  <p className="text-green-700 mb-6">This credential is authentic and valid</p>
+                  <div>
+                    <h3 className="text-2xl font-bold text-emerald-700">VERIFIED</h3>
+                    <p className="text-emerald-700/80 text-sm">Credential is authentic and valid</p>
+                  </div>
                 </div>
-
                 {verificationResult.credential && (
-                  <div className="bg-white rounded-lg p-6">
-                    <h4 className="text-lg font-semibold mb-4">Credential Details</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Student Name</label>
-                        <p className="mt-1 font-medium">{verificationResult.credential.student_name}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Student Name</div>
+                      <div className="text-gray-900 text-lg font-semibold">
+                        {verificationResult.credential.student_name}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Credential Name</label>
-                        <p className="mt-1 font-medium">{verificationResult.credential.name}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Credential</div>
+                      <div className="text-gray-900 text-lg font-semibold">{verificationResult.credential.name}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Type</div>
+                      <div className="text-gray-900 text-lg font-semibold">{verificationResult.credential.type}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Issued Date</div>
+                      <div className="text-gray-900 text-lg font-semibold">
+                        {new Date(verificationResult.credential.issued_date).toLocaleDateString()}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Type</label>
-                        <p className="mt-1">{verificationResult.credential.type}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Business Skill</div>
+                      <div className="text-gray-900 text-lg font-semibold">
+                        {verificationResult.credential.skill_business}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Issued Date</label>
-                        <p className="mt-1">{new Date(verificationResult.credential.issued_date).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Business Skill</label>
-                        <p className="mt-1">{verificationResult.credential.skill_business}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Technical Skill</label>
-                        <p className="mt-1">{verificationResult.credential.skill_tech}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Issuer</label>
-                        <p className="mt-1">{verificationResult.credential.issuer_name}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Technical Skill</div>
+                      <div className="text-gray-900 text-lg font-semibold">{verificationResult.credential.skill_tech}</div>
+                    </div>
+                    <div className="md:col-span-2 bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Issuer</div>
+                      <div className="text-gray-900 text-lg font-semibold">
+                        {verificationResult.credential.issuer_name}
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-8">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+              <div className="bg-white rounded-2xl p-8 border border-red-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-red-800 mb-2">INVALID CREDENTIAL</h3>
-                  <p className="text-red-700">
-                    {verificationResult.error || 'This credential could not be verified'}
-                  </p>
+                  <div>
+                    <h3 className="text-2xl font-bold text-red-700">INVALID CREDENTIAL</h3>
+                    <p className="text-red-700/80 text-sm">This credential could not be verified</p>
+                  </div>
                 </div>
+                <p className="text-red-700/80 text-base mt-4">
+                  {verificationResult.error || "This credential could not be verified"}
+                </p>
               </div>
             )}
           </div>
         )}
 
-        {/* Instructions */}
-        <div className="mt-12 bg-gray-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">How to Verify Credentials</h3>
-          <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">1</span>
-              <p>Ask the student to share their credential QR code or asset ID</p>
-            </div>
-            <div className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">2</span>
-              <p>Scan the QR code or manually enter the asset ID above</p>
-            </div>
-            <div className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">3</span>
-              <p>Our system will verify the credential against the blockchain</p>
-            </div>
-            <div className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">4</span>
-              <p>View the verification result and credential details</p>
-            </div>
-          </div>
-        </div>
+        {showScanner && (
+          <QRScanner onResult={(txt) => { setShowScanner(false); setAssetId(txt); verifyCredential(txt) }} onClose={() => setShowScanner(false)} />
+        )}
       </div>
     </div>
   )

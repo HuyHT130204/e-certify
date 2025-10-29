@@ -1,22 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
-import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import { 
-  ECERTIFY_PROGRAM_ID, 
-  getIssuerPda, 
-  getMerkleTreePda,
-  createInitializeIssuerInstruction,
-  createCreateMerkleTreeInstruction,
-  createIssueCredentialInstruction,
-  getIssuerData,
-  getMerkleTreeData,
-  InitializeIssuerData,
-  CreateMerkleTreeData,
-  IssueCredentialData
-} from '../utils/ecertify'
-import { batchMintCredentialsWithHelius } from '../utils/helius-mint'
-import { ClientOnly } from './ClientOnly'
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
+import { useWallet, useConnection } from "@solana/wallet-adapter-react"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
+import { ClientOnly } from "./ClientOnly"
+import { getIssuer, registerIssuer, getBatches, createBatch, mintCredentials } from "../utils/mock-api"
+import { Upload, Plus, CheckCircle, Building2, FileStack, Zap } from "lucide-react"
 
 interface IssuerData {
   authority: string
@@ -34,207 +24,112 @@ interface CredentialBatch {
 }
 
 const AdminDashboard: React.FC = () => {
-  const { publicKey, signTransaction } = useWallet()
+  const { publicKey } = useWallet()
   const { connection } = useConnection()
   const [issuerData, setIssuerData] = useState<IssuerData | null>(null)
   const [isRegistered, setIsRegistered] = useState(false)
   const [credentialBatches, setCredentialBatches] = useState<CredentialBatch[]>([])
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'register' | 'batches' | 'issue'>('register')
-
-  // Program ID from utils
-  const PROGRAM_ID = ECERTIFY_PROGRAM_ID
+  const [activeTab, setActiveTab] = useState<"register" | "batches" | "issue">("register")
 
   useEffect(() => {
     if (publicKey) {
-      checkIssuerRegistration()
+      bootstrap()
     }
   }, [publicKey])
 
-  const checkIssuerRegistration = async () => {
-    if (!publicKey) return
-
+  const bootstrap = async () => {
     try {
-      // Generate PDA for issuer
-      const [issuerPda] = getIssuerPda(publicKey)
-
-      // Check if issuer account exists and get data
-      const issuerData = await getIssuerData(connection, issuerPda)
-      if (issuerData) {
+      const issuer = await getIssuer()
+      if (issuer) {
         setIsRegistered(true)
         setIssuerData({
-          authority: issuerData.authority.toString(),
-          name: issuerData.name,
-          logo_uri: issuerData.logo_uri,
-          website: issuerData.website
+          authority: issuer.authority,
+          name: issuer.name,
+          logo_uri: issuer.logo_uri,
+          website: issuer.website,
         })
       }
-    } catch (error) {
-      console.error('Error checking issuer registration:', error)
+      const batches = await getBatches()
+      setCredentialBatches(batches.map((b) => ({ ...b, createdAt: new Date(b.createdAt) })))
+    } catch (e) {
+      console.error("Bootstrap error", e)
     }
   }
 
-  const registerIssuer = async () => {
-    if (!publicKey || !signTransaction) return
-
+  const registerIssuerAction = async () => {
+    if (!publicKey) return
     setLoading(true)
     try {
-      // Generate PDA for issuer
-      const [issuerPda] = getIssuerPda(publicKey)
-
-      // Create instruction data
-      const issuerData: InitializeIssuerData = {
-        name: 'APEC University',
-        logo_uri: 'https://apecgroup.net/logo.png',
-        website: 'https://apecgroup.net'
-      }
-
-      // Create transaction using our utility function
-      const transaction = createInitializeIssuerInstruction(
-        publicKey,
-        issuerPda,
-        issuerData
-      )
-
-      // Get recent blockhash and set fee payer
-      const { blockhash } = await connection.getLatestBlockhash()
-      transaction.recentBlockhash = blockhash
-      transaction.feePayer = publicKey
-
-      // Sign and send transaction
-      const signedTransaction = await signTransaction(transaction)
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize())
-      await connection.confirmTransaction(signature)
-
-      setIsRegistered(true)
-      setIssuerData({
+      const payload = {
         authority: publicKey.toString(),
-        name: issuerData.name,
-        logo_uri: issuerData.logo_uri,
-        website: issuerData.website
-      })
-      
-      alert('Issuer registered successfully!')
-    } catch (error) {
-      console.error('Error registering issuer:', error)
-      alert('Error registering issuer. Please try again.')
+        name: "APEC University",
+        logo_uri: "https://apecgroup.net/logo.png",
+        website: "https://apecgroup.net",
+      }
+      const resp = await registerIssuer(payload)
+      if (resp?.ok) {
+        setIsRegistered(true)
+        setIssuerData(payload)
+        alert("Issuer registered successfully!")
+      } else {
+        alert("Register failed")
+      }
+    } catch (e) {
+      console.error(e)
+      alert("Error registering issuer")
     } finally {
       setLoading(false)
     }
   }
 
   const createCredentialBatch = async () => {
-    if (!publicKey || !signTransaction) return
-
     setLoading(true)
     try {
-      // Generate PDAs
-      const [issuerPda] = getIssuerPda(publicKey)
-      const [merkleTreePda] = getMerkleTreePda(publicKey, credentialBatches.length)
-
-      // Create Merkle Tree data
-      const merkleTreeData: CreateMerkleTreeData = {
-        max_depth: 20,
-        max_buffer_size: 64,
-        tree_name: 'K2025 Dual-Degree'
+      const resp = await createBatch({ name: "K2025 Dual-Degree", maxDepth: 20, maxBufferSize: 64 })
+      if (resp?.ok) {
+        const batch = resp.batch
+        setCredentialBatches((prev) => [...prev, { ...batch, createdAt: new Date(batch.createdAt) }])
+        alert("Credential batch created!")
+      } else {
+        alert("Failed to create batch")
       }
-
-      // Create transaction
-      const transaction = createCreateMerkleTreeInstruction(
-        publicKey,
-        issuerPda,
-        merkleTreePda,
-        merkleTreeData
-      )
-
-      // Get recent blockhash and set fee payer
-      const { blockhash } = await connection.getLatestBlockhash()
-      transaction.recentBlockhash = blockhash
-      transaction.feePayer = publicKey
-
-      // Sign and send transaction
-      const signedTransaction = await signTransaction(transaction)
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize())
-      await connection.confirmTransaction(signature)
-
-      // Add to local state
-      const newBatch: CredentialBatch = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: merkleTreeData.tree_name,
-        maxDepth: merkleTreeData.max_depth,
-        maxBufferSize: merkleTreeData.max_buffer_size,
-        createdAt: new Date()
-      }
-      setCredentialBatches([...credentialBatches, newBatch])
-      
-      alert('Credential batch created successfully!')
-    } catch (error) {
-      console.error('Error creating credential batch:', error)
-      alert('Error creating credential batch. Please try again.')
+    } catch (e) {
+      console.error(e)
+      alert("Error creating batch")
     } finally {
       setLoading(false)
     }
   }
 
   const issueCredentials = async (csvFile: File) => {
-    if (!publicKey || !signTransaction) return
-
     setLoading(true)
     try {
-      // Parse CSV file
       const csvText = await csvFile.text()
-      const lines = csvText.split('\n').filter(line => line.trim())
-      const headers = lines[0].split(',').map(h => h.trim())
-      
-      // Find required columns
-      const walletIndex = headers.findIndex(h => h.toLowerCase().includes('wallet'))
-      const nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'))
-      const idIndex = headers.findIndex(h => h.toLowerCase().includes('id'))
-      
+      const lines = csvText.split("\n").filter((line) => line.trim())
+      const headers = lines[0].split(",").map((h) => h.trim())
+      const walletIndex = headers.findIndex((h) => h.toLowerCase().includes("wallet"))
+      const nameIndex = headers.findIndex((h) => h.toLowerCase().includes("name"))
+      const idIndex = headers.findIndex((h) => h.toLowerCase().includes("id"))
       if (walletIndex === -1 || nameIndex === -1 || idIndex === -1) {
-        throw new Error('CSV must contain columns: wallet_address, student_name, student_internal_id')
+        throw new Error("CSV must contain columns: wallet_address, student_name, student_internal_id")
       }
-      
-      // Parse student data
-      const students = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim())
-        return {
-          wallet: values[walletIndex],
-          name: values[nameIndex],
-          internalId: values[idIndex]
-        }
-      }).filter(student => student.wallet && student.name && student.internalId)
-      
-      if (students.length === 0) {
-        throw new Error('No valid student data found in CSV')
-      }
-      
-      // Get form values
-      const credentialName = (document.getElementById('credential-name') as HTMLInputElement)?.value || 'Default Credential'
-      const credentialType = (document.getElementById('credential-type') as HTMLSelectElement)?.value || 'Dual_Degree_Module'
-      
-      // MINT REAL CREDENTIALS USING HELIUS API
-      const mintResults = await batchMintCredentialsWithHelius(
-        students,
-        publicKey.toString()
-      )
-      
-      const successCount = mintResults.filter(r => r.success).length
-      const failCount = mintResults.filter(r => !r.success).length
-      
-      if (successCount > 0) {
-        alert(`Successfully minted ${successCount} credentials!`)
-      }
-      
-      if (failCount > 0) {
-        alert(`Failed to mint ${failCount} credentials. Check console for details.`)
-      }
-      
-      console.log('Mint results:', mintResults)
-      
-    } catch (error) {
-      console.error('Error processing CSV:', error)
-      alert(`Error processing CSV: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      const students = lines
+        .slice(1)
+        .map((line) => {
+          const values = line.split(",").map((v) => v.trim())
+          return { wallet: values[walletIndex], name: values[nameIndex], internalId: values[idIndex] }
+        })
+        .filter((s) => s.wallet && s.name && s.internalId)
+      if (students.length === 0) throw new Error("No valid student data found in CSV")
+
+      const resp = await mintCredentials({ students })
+      const success = resp?.results?.filter((r: any) => r.success).length || 0
+      const fails = resp?.results?.filter((r: any) => !r.success).length || 0
+      alert(`Mint results: success=${success}, failed=${fails}`)
+    } catch (e) {
+      console.error(e)
+      alert(e instanceof Error ? e.message : "Error issuing credentials")
     } finally {
       setLoading(false)
     }
@@ -242,202 +137,240 @@ const AdminDashboard: React.FC = () => {
 
   if (!publicKey) {
     return (
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">Admin Dashboard</h2>
-        <p className="text-gray-600 mb-6">Connect your wallet to access admin features</p>
-        <ClientOnly>
-          <WalletMultiButton />
-        </ClientOnly>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="max-w-md w-full bg-surface border border-border/50 rounded-xl shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Building2 className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-text mb-2">Admin Dashboard</h2>
+          <p className="text-text-secondary mb-6">
+            Connect your wallet to access admin features and manage credentials
+          </p>
+          <ClientOnly>
+            <WalletMultiButton />
+          </ClientOnly>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
-          <ClientOnly>
-            <WalletMultiButton />
-          </ClientOnly>
+    <div className="max-w-6xl mx-auto px-4 md:px-0">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-text mb-2">Admin Dashboard</h2>
+          <p className="text-text-secondary">Manage issuer registration, credential batches, and student credentials</p>
         </div>
+        <ClientOnly>
+          <WalletMultiButton />
+        </ClientOnly>
+      </div>
 
-        {/* Tab Navigation */}
-        <div className="flex space-x-4 mb-8 border-b">
-          <button
-            onClick={() => setActiveTab('register')}
-            className={`pb-2 px-1 border-b-2 font-medium ${
-              activeTab === 'register'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Register Issuer
-          </button>
-          <button
-            onClick={() => setActiveTab('batches')}
-            className={`pb-2 px-1 border-b-2 font-medium ${
-              activeTab === 'batches'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Credential Batches
-          </button>
-          <button
-            onClick={() => setActiveTab('issue')}
-            className={`pb-2 px-1 border-b-2 font-medium ${
-              activeTab === 'issue'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Issue Credentials
-          </button>
-        </div>
+      {/* Tab Navigation */}
+      <div className="flex gap-2 mb-8 border-b border-border/50 overflow-x-auto no-scrollbar">
+        {[
+          { id: "register", label: "Register Issuer", icon: Building2 },
+          { id: "batches", label: "Credential Batches", icon: FileStack },
+          { id: "issue", label: "Issue Credentials", icon: Zap },
+        ].map((tab) => {
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 pb-3 px-4 font-semibold text-sm transition-all duration-300 border-b-2 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-tertiary hover:text-text-secondary"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Register Issuer Tab */}
-        {activeTab === 'register' && (
-          <div>
-            {!isRegistered ? (
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-4">Register APEC University as Issuer</h3>
-                <p className="text-gray-600 mb-6">
-                  Register your institution to start issuing blockchain credentials
+      {/* Content */}
+      {activeTab === "register" && (
+        <div>
+          {!isRegistered ? (
+            <div className="card min-h-[220px] flex flex-col justify-center">
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Building2 className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold text-text mb-3">Register APEC University</h3>
+                <p className="text-text-secondary mb-8 max-w-md mx-auto">
+                  Register your institution to start issuing blockchain credentials and managing student achievements
                 </p>
-                <button
-                  onClick={registerIssuer}
-                  disabled={loading}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {loading ? 'Registering...' : 'Register Issuer'}
+                <button onClick={registerIssuerAction} disabled={loading} className="btn-primary">
+                  {loading ? "Registering..." : "Register Issuer"}
                 </button>
               </div>
-            ) : (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-green-800 mb-2">Issuer Registered Successfully</h3>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Name:</span> {issuerData?.name}</p>
-                  <p><span className="font-medium">Authority:</span> {issuerData?.authority}</p>
-                  <p><span className="font-medium">Website:</span> {issuerData?.website}</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-12 h-12 bg-success/20 rounded-lg flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-6 h-6 text-success" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-success mb-1">Issuer Registered</h3>
+                  <p className="text-text-secondary">Your institution is ready to issue credentials</p>
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Credential Batches Tab */}
-        {activeTab === 'batches' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold">Credential Batches</h3>
-              <button
-                onClick={createCredentialBatch}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700"
-              >
-                Create New Batch
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-surface border border-border/50 rounded-lg p-4 min-h-[88px]">
+                  <p className="text-text-tertiary text-sm font-medium mb-1">Institution Name</p>
+                  <p className="text-lg font-semibold text-text">{issuerData?.name}</p>
+                </div>
+                <div className="bg-surface border border-border/50 rounded-lg p-4 min-h-[88px]">
+                  <p className="text-text-tertiary text-sm font-medium mb-1">Website</p>
+                  <p className="text-lg font-semibold text-text">{issuerData?.website}</p>
+                </div>
+                <div className="md:col-span-2 bg-surface border border-border/50 rounded-lg p-4">
+                  <p className="text-text-tertiary text-sm font-medium mb-1">Authority Address</p>
+                  <p className="text-sm font-mono text-text break-all">{issuerData?.authority}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "batches" && (
+        <div>
+            <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-2xl font-bold text-text mb-1">Credential Batches</h3>
+              <p className="text-text-secondary">Manage credential batches for different programs</p>
+            </div>
+            <button onClick={createCredentialBatch} disabled={loading} className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Create Batch
+            </button>
+          </div>
+
+          {credentialBatches.length === 0 ? (
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 bg-surface-light rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileStack className="w-8 h-8 text-text-tertiary" />
+              </div>
+              <p className="text-text-secondary mb-4">No credential batches created yet</p>
+              <button onClick={createCredentialBatch} className="btn-secondary">
+                Create Your First Batch
               </button>
             </div>
-            
+          ) : (
             <div className="grid gap-4">
               {credentialBatches.map((batch) => (
-                <div key={batch.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-semibold">{batch.name}</h4>
-                      <p className="text-sm text-gray-600">
-                        Max Depth: {batch.maxDepth} | Buffer Size: {batch.maxBufferSize}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Created: {batch.createdAt.toLocaleDateString()}
-                      </p>
+                <div key={batch.id} className="card hover:shadow-lg hover:shadow-primary/10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <FileStack className="w-5 h-5 text-primary" />
+                        </div>
+                        <h4 className="font-bold text-lg text-text line-clamp-1">{batch.name}</h4>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mt-4">
+                        <div>
+                          <p className="text-text-tertiary text-sm font-medium mb-1">Max Depth</p>
+                          <p className="text-base font-semibold text-text">{batch.maxDepth}</p>
+                        </div>
+                        <div>
+                          <p className="text-text-tertiary text-sm font-medium mb-1">Buffer Size</p>
+                          <p className="text-base font-semibold text-text">{batch.maxBufferSize}</p>
+                        </div>
+                        <div>
+                          <p className="text-text-tertiary text-sm font-medium mb-1">Created</p>
+                          <p className="text-base font-semibold text-text">{batch.createdAt.toLocaleDateString()}</p>
+                        </div>
+                      </div>
                     </div>
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-                      Ready
-                    </span>
+                    <div className="badge bg-success/10 text-success border border-success/30 shrink-0">Ready</div>
                   </div>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "issue" && (
+        <div>
+          <div className="mb-8">
+            <h3 className="text-2xl font-bold text-text mb-2">Issue Credentials</h3>
+            <p className="text-text-secondary">Upload a CSV file to mint credentials for multiple students</p>
           </div>
-        )}
 
-        {/* Issue Credentials Tab */}
-        {activeTab === 'issue' && (
-          <div>
-            <h3 className="text-xl font-semibold mb-6">Issue Credentials</h3>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Credential Batch
-                </label>
-                <select id="batch-select" className="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option>Select a batch...</option>
-                  {credentialBatches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Credential Metadata
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    id="credential-name"
-                    type="text"
-                    placeholder="Credential Name"
-                    className="border border-gray-300 rounded-lg px-3 py-2"
-                  />
-                  <select id="credential-type" className="border border-gray-300 rounded-lg px-3 py-2">
-                    <option value="Dual_Degree_Module">Dual Degree Module</option>
-                    <option value="Business_Skill">Business Skill</option>
-                    <option value="Technical_Skill">Technical Skill</option>
-                  </select>
+          <div className="card">
+            <label htmlFor="csv-upload" className="cursor-pointer block">
+              <div className="border-2 border-dashed border-border/50 rounded-lg p-12 text-center hover:border-primary hover:bg-primary/5 transition-all duration-300">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Upload className="w-8 h-8 text-primary" />
                 </div>
+                <h4 className="text-lg font-semibold text-text mb-2">Upload CSV File</h4>
+                <p className="text-text-secondary mb-4">Drag and drop your CSV file or click to browse</p>
+                <p className="text-sm text-text-tertiary">
+                  CSV must contain: <span className="font-mono text-primary">student_wallet_address</span>,{" "}
+                  <span className="font-mono text-primary">student_name</span>,{" "}
+                  <span className="font-mono text-primary">student_internal_id</span>
+                </p>
               </div>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) issueCredentials(file)
+                }}
+                className="hidden"
+                id="csv-upload"
+              />
+            </label>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Student CSV
-                </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) issueCredentials(file)
-                    }}
-                    className="hidden"
-                    id="csv-upload"
-                  />
-                  <label
-                    htmlFor="csv-upload"
-                    className="cursor-pointer text-blue-600 hover:text-blue-700"
-                  >
-                    Click to upload CSV file
-                  </label>
-                  <p className="text-sm text-gray-500 mt-2">
-                    CSV should contain: student_wallet_address, student_name, student_internal_id
-                  </p>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <FileStack className="w-5 h-5 text-primary" />
                 </div>
+                <h4 className="font-semibold text-text">CSV Format</h4>
               </div>
-
-              <button
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700"
-                disabled={credentialBatches.length === 0}
-              >
-                Start Batch Mint
-              </button>
+              <p className="text-sm text-text-secondary">
+                Ensure your CSV file has the correct headers and student data in the proper format
+              </p>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-accent" />
+                </div>
+                <h4 className="font-semibold text-text">Validation</h4>
+              </div>
+              <p className="text-sm text-text-secondary">
+                All student records are validated before credentials are minted on the blockchain
+              </p>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-success" />
+                </div>
+                <h4 className="font-semibold text-text">Instant Minting</h4>
+              </div>
+              <p className="text-sm text-text-secondary">
+                Credentials are instantly minted and available for students to view and share
+              </p>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
