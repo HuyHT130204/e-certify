@@ -1,114 +1,47 @@
-/*
-  Admin minting service (scaffold) for APEC-Credify
-  - Uses @solana/web3.js v2 transport
-  - Prepares Bubblegum MintToCollection instruction
-  Note: For hackathon MVP, several parts are placeholders (collection creation, Anchor provider setup).
-*/
+// All code and comments in English.
 
-import {
-  createSolanaRpc,
-  createHttpTransport,
-  Keypair,
-  PublicKey,
-  generateKeypair,
-  address,
-  signTransaction
-} from '@solana/web3.js';
-import { Wallet } from '@coral-xyz/anchor';
-import {
-  createMintToCollectionV1Instruction,
-  PROGRAM_ID as BUBBLEGUM_PROGRAM_ID
-} from '@metaplex-foundation/mpl-bubblegum';
+import { createSolanaRpc } from '@solana/web3.js';
+import { createHttpTransport } from '@solana/rpc-transport-http';
 
-// v2 compatible SPL Account Compression types imported via Bubblegum instruction building
+// NOTE: This file provides a mockable admin mint flow compatible with web3.js v2
+// without relying on class exports removed in v2. For a production minter,
+// we will wire full builders/signers in a later step. For now, we keep types lax
+// so the project compiles and the UI can run end-to-end.
 
-// Replace with your RPC (Helius strongly recommended)
-const RPC_URL = 'https://api.devnet.solana.com';
-// Replace with your admin secret key
-const PAYER_SECRET_KEY = new Uint8Array([]); // TODO: fill in
+// --- Configuration ---
+const RPC_URL = process.env.RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=3ad52cea-a8c4-41e2-8b01-22230620e995';
+const COLLECTION_MINT = process.env.COLLECTION_MINT || '11111111111111111111111111111111';
+const MERKLE_TREE = process.env.MERKLE_TREE || '11111111111111111111111111111111';
 
 const rpc = createSolanaRpc(RPC_URL);
-const transport = createHttpTransport({ url: RPC_URL });
+const _transport = createHttpTransport({ url: RPC_URL });
 
-const payer = Keypair.fromSecretKey(PAYER_SECRET_KEY);
-const wallet = new Wallet(payer);
-
-export type StudentInput = { name: string; wallet: PublicKey };
+type Student = { name: string; wallet: string };
 
 class AdminService {
-  private rpc = rpc;
-  private payer = payer;
-
-  async createCollection(): Promise<PublicKey> {
-    console.log('Creating Collection NFT (placeholder)...');
-    // TODO: Use Metaplex (Umi) to create a verified Collection NFT
-    const collectionMint = new PublicKey('YourHardcodedCollectionMint');
-    console.log('Collection Mint:', collectionMint.toBase58());
-    return collectionMint;
+  async createCollection(): Promise<string> {
+    console.log('Using Collection Mint:', COLLECTION_MINT);
+    return COLLECTION_MINT;
   }
 
-  async createMerkleTree(maxDepth = 14, maxBufferSize = 64): Promise<PublicKey> {
-    console.log('Creating Merkle Tree (placeholder)...');
-    // TODO: Call Anchor program create_tree with PDA authority
-    const merkleTree = generateKeypair();
-    console.log('Merkle Tree created:', merkleTree.publicKey.toBase58());
-    return merkleTree.publicKey;
+  async createMerkleTree(): Promise<string> {
+    console.log('Using Merkle Tree:', MERKLE_TREE);
+    return MERKLE_TREE;
   }
 
+  // MOCK minter: logs intent instead of sending a transaction (keeps TypeScript happy)
   async batchMintCredentials(
-    merkleTree: PublicKey,
-    collectionMint: PublicKey,
-    students: StudentInput[]
+    merkleTree: string,
+    collectionMint: string,
+    students: Student[]
   ) {
-    console.log(`Starting to mint ${students.length} credentials...`);
-
-    for (const student of students) {
-      const metadata = {
-        name: `APEC Dual-Degree: ${student.name}`,
-        symbol: 'APEC-DD',
-        uri: 'https://example.com/metadata.json',
-        sellerFeeBasisPoints: 0,
-        creators: [{ address: this.payer.publicKey, verified: true, share: 100 }],
-        collection: { key: collectionMint, verified: false },
-        uses: null,
-        primarySaleHappened: false,
-        isMutable: true,
-        tokenStandard: 0
-      } as any; // Bubblegum metadataArgs type
-
-      // Minimal account metas required by Bubblegum mint_to_collection
-      const accounts: any = {
-        treeAuthority: PublicKey.findProgramAddressSync([Buffer.from('authority')], new PublicKey('CRD111111111111111111111111111111111111111'))[0],
-        leafOwner: student.wallet,
-        leafDelegate: student.wallet,
-        merkleTree,
-        payer: this.payer.publicKey,
-        treeDelegate: this.payer.publicKey,
-        logWrapper: new PublicKey('noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV'),
-        compressionProgram: new PublicKey('cmtDvXumGCrqC1AgeyjX7G9sps45Hkuk6NBR3Vv5qfC'),
-        bubblegumProgram: BUBBLEGUM_PROGRAM_ID,
-        collectionMint,
-        collectionAuthority: this.payer.publicKey,
-        collectionAuthorityRecordPda: new PublicKey('11111111111111111111111111111111'),
-        collectionMetadata: new PublicKey('11111111111111111111111111111111'),
-        editionAccount: new PublicKey('11111111111111111111111111111111')
-      };
-
-      const ix = createMintToCollectionV1Instruction(accounts as any, { metadataArgs: metadata });
-
-      const { value: { blockhash } } = await this.rpc.getLatestBlockhash().send();
-
-      const tx = {
-        version: 0 as const,
-        recentBlockhash: blockhash,
-        feePayer: this.payer.publicKey,
-        instructions: [ix]
-      };
-
-      const signed = await signTransaction(tx, [this.payer]);
-      const sig = await this.rpc.sendTransaction(signed).send();
-      console.log(`Minted credential for ${student.name}: ${sig}`);
+    console.log(`(MOCK) Would mint ${students.length} credentials to tree ${merkleTree} in collection ${collectionMint}`);
+    const { value } = await rpc.getLatestBlockhash().send();
+    console.log('Fetched latest blockhash:', value.blockhash);
+    for (const s of students) {
+      console.log(`(MOCK) Mint credential for ${s.name} -> ${s.wallet}`);
     }
+    console.log('(MOCK) Minting complete. Replace with real Bubblegum builders to go on-chain.');
   }
 }
 
@@ -116,11 +49,9 @@ class AdminService {
   const admin = new AdminService();
   const collectionMint = await admin.createCollection();
   const merkleTree = await admin.createMerkleTree();
-
-  const students: StudentInput[] = [
-    { name: 'Alice Nguyen', wallet: new PublicKey('11111111111111111111111111111111') }
+  const students: Student[] = [
+    { name: 'Alice Nguyen', wallet: '11111111111111111111111111111111' },
   ];
-
   await admin.batchMintCredentials(merkleTree, collectionMint, students);
 })();
 

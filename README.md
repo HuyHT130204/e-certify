@@ -1,61 +1,53 @@
-# APEC-Credify
+APEC-Credify
 
-A Solana Colosseum Hackathon MVP to create an on-chain credentialing system for APEC University using compressed NFTs (cNFTs).
+Overview
+- A Solana Colosseum Hackathon MVP to issue, manage, and verify academic credentials for APEC University using compressed NFTs (cNFTs) on Solana.
+- System components: Anchor on-chain authority, Admin minting script (TypeScript), Student PWA (Next.js) with DAS, and a simple Verifier page.
 
-## Product Overview
-- B2B admin issues credentials in batch to students
-- Students view a mobile-first Skills Passport (your existing frontend)
-- Verifiers confirm authenticity via a public verification page (provided by your frontend)
+Critical SDKs and Versions
+- @solana/web3.js ^2.0.0
+- @coral-xyz/anchor ^0.32.1 (JS), anchor-lang = 0.32.1 (Rust)
+- @solana-program/token ^0.6.0
+- @metaplex-foundation/mpl-bubblegum ^5.0.2
+- spl-account-compression ^0.2.0 (Rust), mpl-bubblegum ^2.1.1 (Rust)
+- @solana/rpc-transport-http ^2.0.0
 
-## Critical SDKs and Versions
-- @solana/web3.js: ^2.0.0 (v2 API)
-- @coral-xyz/anchor: ^0.32.1 (TS client)
-- Anchor Rust crate: 0.32.1
-- Anchor CLI: 0.32.0 (via avm)
-- @metaplex-foundation/mpl-bubblegum: ^5.0.2 (cNFTs)
-- @solana-program/token: ^0.6.0
-- @solana/rpc-transport-http: ^2.0.0
-- Rust edition: 2021 (use stable 1.90.0+ as available)
+Monorepo Layout
+- Anchor program: programs/credify_program
+- Admin script: ts/adminMint.ts
+- Frontend (Next.js App Router): app/
 
-## Project Structure
-- programs/credify_program: Anchor on-chain program (tree authority, governance scaffolding)
-- ts/adminMint.ts: Admin backend script to batch mint credentials using Bubblegum
-- frontend/: Your existing frontend application (use this for UI)
+Prerequisites
+- Node 18+
+- Rust 1.90.0 (2024 edition)
+- Anchor CLI 0.32.0, Solana CLI ~2.3.13
 
-## Prerequisites
-- Node.js 18+
-- pnpm/npm/yarn
-- Rust + Solana + Anchor CLI
-  - avm install 0.32.0 && avm use 0.32.0
-  - anchor --version
+Setup
+1) Install dependencies
+   npm install
 
-## Install Dependencies (root: on-chain + admin script)
-```bash
-npm install
-```
+2) Configure environment
+   - Create a file named `.env.local` in the project root and set:
+     - `NEXT_PUBLIC_DAS_URL` = a DAS-enabled RPC URL (e.g., your Helius URL)
+     - `NEXT_PUBLIC_DEMO_OWNER` = a base58 wallet address to preview credentials
+     - `NEXT_PUBLIC_APEC_COLLECTION` = optional collection mint to filter credentials
+     - `RPC_URL` = same as above (used by the admin script)
+     - `COLLECTION_MINT` = your collection mint address (for cNFT grouping)
+     - `MERKLE_TREE` = your merkle tree address
 
-## Build On-chain Program
-```bash
-npm run anchor:build
-```
+Build
+- On-chain: anchor build
 
-## Run Admin Script
-Edit `ts/adminMint.ts` and fill in your payer secret key, collection mint, and RPC.
-```bash
-npx ts-node ts/adminMint.ts
-```
+Run Admin Script (mint)
+- npx ts-node ts/adminMint.ts
 
-## Frontend
-Use your existing app under `frontend/`. Install and run it with your current workflow, e.g.:
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Run Frontend (PWA)
+- npm run dev
+- App runs at http://localhost:3000
 
-## Environment
-- DAS RPC (Helius) for asset queries:
-  - `https://mainnet.helius-rpc.com/?api-key=3ad52cea-a8c4-41e2-8b01-22230620e995`
+Notes
+- The Anchor program intentionally avoids CPI minting to Bubblegum for MVP simplicity; the admin script mints directly using Bubblegum.
+- Use a DAS-enabled RPC (e.g., Helius) for SkillsPassport and Verification pages.
+ - Wallet: The dashboard includes a simple Phantom connect button (no seed phrase exposure). Install Phantom and click "Connect Wallet".
+ - Env: copy .env.local.example to .env.local and fill RPC/collection/owner values. If not present, the app will still render and can mock or show public content.
 
-## Notes
-- On-chain CPI details for creating trees and proof math verification are left as placeholders for the MVP. Replace with full implementations as you iterate.

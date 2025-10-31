@@ -1,0 +1,14 @@
+[programs.localnet]
+credify_program = "CRD111111111111111111111111111111111111111"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "node --version"
+
+

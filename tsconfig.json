@@ -9,15 +9,14 @@
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
     "strict": true,
-    "jsx": "preserve",
-    "allowJs": false,
     "noEmit": true,
+    "jsx": "preserve",
     "types": [
       "node"
     ],
+    "allowJs": true,
+    "skipLibCheck": true,
     "incremental": true,
     "isolatedModules": true,
     "plugins": [
@@ -27,14 +26,13 @@
     ]
   },
   "include": [
+    "app",
+    "ts",
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
     ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
   ]
 }
-
 

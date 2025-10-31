@@ -1,31 +1,51 @@
-# Node
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# --- Node / Next.js (apec_credify) ---
 node_modules/
+.next/
+.next-static/
+.next-turbo/
+.next/cache/
+out/
+dist/
+.cache/
+.turbo/
+.vercel/
+coverage/
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
 
-# Next.js
-.next/
-.next-cache/
-.out/
-
-# Env
+# Env files (keep examples)
 .env
 .env.*
+!.env.example
 
-# OS
-.DS_Store
-Thumbs.db
+# --- TypeScript ---
+*.tsbuildinfo
 
-# Editor
-.vscode/
-.idea/
-
-# Rust/Anchor
+# --- Rust / Anchor (apec_credify) ---
+# Anchor local artifacts
+apec_credify/.anchor/
+# Anchor build outputs
+apec_credify/target/
+# Program local targets (if any nested)
+apec_credify/programs/**/target/
+# Rust incremental build cache
 **/target/
-**/.anchor/
 
-# Build artifacts
-coverage/
-dist/
+# Solana/keys (adjust if you keep example keys)
+**/*.keypair.json
+**/id.json
+
+# Misc
+*.tmp
+*.temp
