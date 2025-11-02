@@ -15,7 +15,7 @@ export default function AvatarRow({ users, size = 36, overlap = 12 }: AvatarRowP
       {users.map((u, idx) => (
         <div
           key={u.id}
-          className="rounded-full ring-2 ring-white"
+          className="rounded-full ring-2 ring-white overflow-hidden"
           style={{
             width: size,
             height: size,
@@ -24,7 +24,7 @@ export default function AvatarRow({ users, size = 36, overlap = 12 }: AvatarRowP
           }}
           title={u.label || u.id}
         >
-          <Avvvatars value={u.id} size={size} style={{ borderRadius: '9999px' }} />
+          <Avvvatars value={u.id} size={size} />
         </div>
       ))}
     </div>
