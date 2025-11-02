@@ -100,10 +100,10 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center gap-6 pb-6 border-b">
+                <div className="flex items-center gap-6 pb-6 border-b border-slate-100">
                   <UserAvatar value={email || "user"} size={80} />
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
+                    <h3 className="text-lg font-semibold text-purple-600">
                       {fullName || email?.split("@")[0] || "User"}
                     </h3>
                     <p className="text-sm text-slate-600">{email}</p>
@@ -115,7 +115,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+    <div className="space-y-4">
                   <div className="space-y-2">
                     <label htmlFor="fullName" className="text-sm font-medium text-slate-700 flex items-center gap-2">
                       <User className="h-4 w-4" />
@@ -198,7 +198,7 @@ export default function SettingsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div>
                     <p className="text-sm font-medium text-slate-900">Email Notifications</p>
                     <p className="text-xs text-slate-500">Receive updates via email</p>
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                   </label>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pt-3">
                   <div>
                     <p className="text-sm font-medium text-slate-900">Course Updates</p>
                     <p className="text-xs text-slate-500">Get notified about new courses</p>
@@ -230,13 +230,13 @@ export default function SettingsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                   <span className="text-sm text-slate-600">Member since</span>
                   <span className="text-sm font-medium text-slate-900">
                     {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pb-2 border-b">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                   <span className="text-sm text-slate-600">Account status</span>
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     Active
@@ -251,7 +251,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
+      </div>
       </div>
     </div>
   );

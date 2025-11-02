@@ -72,7 +72,7 @@ export default function PlatformHeader({ userEmail }: PlatformHeaderProps) {
           <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
             <UserAvatar value={userEmail || "user"} size={36} />
             <div className="hidden flex-col sm:flex">
-              <span className="text-sm font-semibold leading-none">
+              <span className="text-sm font-semibold leading-none text-purple-600">
                 {userEmail?.split("@")[0] || "User"}
               </span>
               <span className="text-xs text-muted-foreground leading-none mt-1">
