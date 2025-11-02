@@ -1,57 +1,140 @@
 @import "tailwindcss";
 
-/* Tailwind v4 tokens for custom colors/radius used in utilities */
 @theme {
-  /* Light theme tokens */
-  --color-background: #f5f6fa;
-  --color-panel: #ffffff;
-  --color-primary: #6c4cff;
+	/* Neutral base */
+	--color-background: oklch(100% 0 0);
+	--color-foreground: oklch(20% 0.05 240);
+	--color-muted: oklch(96% 0 0);
+	--color-muted-foreground: oklch(50% 0.02 240);
+	--color-popover: oklch(100% 0 0);
+	--color-popover-foreground: oklch(20% 0.05 240);
+	--color-card: oklch(100% 0 0);
+	--color-card-foreground: oklch(20% 0.05 240);
+	--color-border: oklch(91% 0 0);
+	--color-input: oklch(91% 0 0);
+	--color-ring: oklch(65% 0.25 270);
+	--radius: 0.75rem;
+
+	/* Colorful palette - VERY BRIGHT AND VIBRANT */
+	/* Primary: Vibrant Purple/Blue */
+	--color-primary: oklch(65% 0.35 280);
+	--color-primary-foreground: oklch(100% 0 0);
+	
+	/* Secondary: Bright Teal/Cyan */
+	--color-secondary: oklch(60% 0.30 200);
+	--color-secondary-foreground: oklch(100% 0 0);
+	
+	/* Accent: Vibrant Orange */
+	--color-accent: oklch(65% 0.30 60);
+	--color-accent-foreground: oklch(100% 0 0);
+	
+	/* Destructive: Red */
+	--color-destructive: oklch(65% 0.25 25);
+	--color-destructive-foreground: oklch(100% 0 0);
+	
+	/* Success: Green */
+	--color-success: oklch(60% 0.25 150);
+	--color-success-foreground: oklch(100% 0 0);
+	
+	/* Info: Blue */
+	--color-info: oklch(65% 0.30 240);
+	--color-info-foreground: oklch(100% 0 0);
+	
+	/* Warning: Amber */
+	--color-warning: oklch(70% 0.25 85);
+	--color-warning-foreground: oklch(100% 0 0);
 }
 
-html, body {
-  background-color: var(--color-background);
-  color: #111827; /* slate-800 */
+:root {
+	/* Fallback HSL variables for compatibility */
+	--background: 0 0% 100%;
+	--foreground: 222 47% 11%;
+	--muted: 220 14% 96%;
+	--muted-foreground: 220 9% 46%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 222 47% 11%;
+	--card: 0 0% 100%;
+	--card-foreground: 222 47% 11%;
+	--border: 220 13% 91%;
+	--input: 220 13% 91%;
+	--ring: 270 65% 65%;
+	--radius: 0.75rem;
+
+	/* Colorful palette - VERY BRIGHT HSL for compatibility */
+	--primary: 280 85% 60%;
+	--primary-foreground: 0 0% 100%;
+	
+	--secondary: 200 85% 55%;
+	--secondary-foreground: 0 0% 100%;
+	
+	--accent: 25 100% 60%;
+	--accent-foreground: 0 0% 100%;
+	
+	--destructive: 0 84% 60%;
+	--destructive-foreground: 0 0% 100%;
+	
+	--success: 150 70% 55%;
+	--success-foreground: 0 0% 100%;
+	
+	--info: 240 85% 60%;
+	--info-foreground: 0 0% 100%;
+	
+	--warning: 45 95% 55%;
+	--warning-foreground: 0 0% 100%;
 }
 
-.card {
-  background-color: var(--color-panel);
-  padding: 16px;
-  border-radius: 16px;
+.dark {
+	--background: 222 47% 11%;
+	--foreground: 0 0% 100%;
+	--muted: 222 14% 16%;
+	--muted-foreground: 220 9% 70%;
+	--popover: 222 47% 11%;
+	--popover-foreground: 0 0% 100%;
+	--card: 222 47% 12%;
+	--card-foreground: 0 0% 100%;
+	--border: 223 13% 20%;
+	--input: 223 13% 20%;
+	--ring: 270 65% 65%;
+
+	--primary: 280 80% 70%;
+	--primary-foreground: 222 47% 11%;
+	--secondary: 200 80% 65%;
+	--secondary-foreground: 222 47% 11%;
+	--accent: 25 95% 65%;
+	--accent-foreground: 222 47% 11%;
+	
+	--success: 150 70% 60%;
+	--success-foreground: 222 47% 11%;
+	--info: 240 80% 70%;
+	--info-foreground: 222 47% 11%;
+	--warning: 45 90% 60%;
+	--warning-foreground: 222 47% 11%;
 }
 
-.btn-primary {
-  background-color: var(--color-primary);
-  color: #ffffff;
-  border-radius: 8px;
-  padding: 8px 16px;
+/* Smooth typography and section spacing */
+@layer base {
+	* {
+		border-color: hsl(var(--border));
+	}
+	body { 
+		background-color: hsl(var(--background));
+		color: hsl(var(--foreground));
+	}
 }
 
-.btn-ghost {
-  background-color: #ffffff;
-  color: #111827;
-  border-radius: 10px;
-  padding: 8px 12px;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+/* Direct color utility classes for testing */
+.bg-primary-solid {
+	background-color: hsl(280 85% 60%) !important;
 }
-
-/* Smooth animations */
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+.bg-secondary-solid {
+	background-color: hsl(200 85% 55%) !important;
 }
-
-.animate-fade-in {
-  animation: fade-in 400ms ease forwards;
+.bg-accent-solid {
+	background-color: hsl(25 100% 60%) !important;
 }
-
-@keyframes pulse-soft {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(108, 76, 255, 0.25); }
-  50% { box-shadow: 0 0 0 8px rgba(108, 76, 255, 0.08); }
+.text-primary-solid {
+	color: hsl(280 85% 60%) !important;
 }
-
-.pulse-soft {
-  animation: pulse-soft 2.4s ease-in-out infinite;
+.text-secondary-solid {
+	color: hsl(200 85% 55%) !important;
 }
-
-
-
