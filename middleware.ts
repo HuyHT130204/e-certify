@@ -42,31 +42,8 @@ export async function middleware(request: NextRequest) {
   // Auth gating happens in server components/routes instead.
   let userRole = 'student';
 
-  // --- Admin Route Protection ---
-  if (pathname.startsWith('/admin')) {
-    if (userRole !== 'admin') {
-      console.warn(`Non-admin user (${userRole}) denied access to: ${pathname}`);
-      const dashboardRedirect = NextResponse.redirect(new URL('/dashboard', request.url));
-      // Copy cookies from current response to redirect response
-      response.cookies.getAll().forEach((cookie) => {
-        dashboardRedirect.cookies.set(cookie);
-      });
-      return dashboardRedirect;
-    }
-  }
-
-  // --- Teacher Route Protection ---
-  if (pathname.startsWith('/teacher') || pathname.startsWith('/create-course')) {
-    if (userRole !== 'teacher' && userRole !== 'admin') {
-      console.warn(`Non-teacher user (${userRole}) denied access to: ${pathname}`);
-      const dashboardRedirect = NextResponse.redirect(new URL('/dashboard', request.url));
-      // Copy cookies from current response to redirect response
-      response.cookies.getAll().forEach((cookie) => {
-        dashboardRedirect.cookies.set(cookie);
-      });
-      return dashboardRedirect;
-    }
-  }
+  // Role enforcement is disabled at middleware level to avoid redirect loops.
+  // Perform role checks inside server components/pages instead.
   
   // Return the response (cookies are already set in the response object)
   return response;

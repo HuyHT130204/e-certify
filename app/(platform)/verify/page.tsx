@@ -32,8 +32,8 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-4xl p-6 md:p-8 lg:p-10">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Credential Verification</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold text-gray-900">Credential Verification</h1>
+          <p className="text-gray-600 mt-2">
             Instant verification of on-chain certificates - Scan QR code or enter Asset ID
           </p>
         </div>
